@@ -64,7 +64,7 @@ def print_statistics(label: str, image: np.ndarray):
 def read_noise(image, amount, gain=1) -> np.ndarray:
     """
     :param image: image that the noise array should match
-    :param amount: ammount of read noise (electrons)
+    :param amount: amount of read noise (electrons)
     :param gain: camera gain (electrons/adu)
     :return: noise image
     """
@@ -270,7 +270,7 @@ def write_fits_image(file_name: str, image: np.ndarray, statistics: Optional[boo
     :param statistics: print image statistics
     """
     # Create the image
-    hdu = fits.PrimaryHDU(data=image)
+    hdu = fits.PrimaryHDU(data=np.int16(image))
     if statistics:
         print_statistics('fits', hdu.data)
 
@@ -280,7 +280,7 @@ def write_fits_image(file_name: str, image: np.ndarray, statistics: Optional[boo
     hdu.header['NAXIS'] = 2
     hdu.header['NAXIS1'] = DEFAULT_NAXIS1
     hdu.header['NAXIS2'] = DEFAULT_NAXIS2
-    hdu.header['BZERO'] = 32768
+    hdu.header['BZERO'] = 0
     hdu.header['BSCALE'] = 1
     hdu.header['EXTEND'] = True
     hdu.header['GAIN'] = 200
