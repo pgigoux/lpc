@@ -6,6 +6,7 @@ https://www.astropy.org/ccd-reduction-and-photometry-guide/v/dev/notebooks/01-03
 
 import argparse
 import random
+from typing import Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -49,6 +50,15 @@ def random_noise(max_value: int, percent=DEFAULT_NOISE_PERCENT) -> float:
     :return: random noise
     """
     return (random.random() - 0.5) * max_value * percent / 100.0
+
+
+def print_statistics(label: str, image: np.ndarray):
+    """
+    Print image statistics
+    :param label: line label
+    :param image: image
+    """
+    print(f'{label}: min={image.min(initial=0)}, max={image.max(initial=0)}, mean={image.mean()} std={image.std()}')
 
 
 def read_noise(image, amount, gain=1) -> np.ndarray:
@@ -215,31 +225,54 @@ def lgs_stars(image: np.ndarray, lgs_enable_factors: list,
     return make_gaussian_sources_image(shape, table)
 
 
-def generate_artificial_image(lgs_enable_factors: list) -> np.ndarray:
+def generate_artificial_image(lgs_enable_factors: list, statistics: Optional[bool] = False) -> np.ndarray:
     """
     :return: artificial image
     """
     base_image = np.zeros([DEFAULT_NAXIS1, DEFAULT_NAXIS2])
+    if statistics:
+        print_statistics('base', base_image)
+
     noise_image = read_noise(base_image, DEFAULT_READOUT_NOISE, gain=1)
+    if statistics:
+        print_statistics('noise', noise_image)
+
     bias_image = bias(base_image, DEFAULT_BIAS_LEVEL, realistic=True)
+    if statistics:
+        print_statistics('bias', bias_image)
+
     sky_image = sky_background(base_image, DEFAULT_SKY_BACKGROUND)
+    if statistics:
+        print_statistics('sky', sky_image)
+
     star_image = stars(base_image, DEFAULT_NGS_STARS, max_counts=DEFAULT_NGS_AMPLITUDE)
+    if statistics:
+        print_statistics('star', star_image)
+
     lgs_image = lgs_stars(base_image, lgs_enable_factors, max_counts=DEFAULT_LGS_AMPLITUDE)
+    if statistics:
+        print_statistics('lgs', lgs_image)
 
-    return base_image + noise_image + bias_image + sky_image + star_image + lgs_image
+    final_image = base_image + noise_image + bias_image + sky_image + star_image + lgs_image
+    if statistics:
+        print_statistics('final', final_image)
+
+    return final_image
 
 
-def write_fits_image(file_name: str, image: np.ndarray):
+def write_fits_image(file_name: str, image: np.ndarray, statistics: Optional[bool] = False):
     """
     Create a FITS image on disk.
     The pixel data is forced to be 16-bit.
     The image header will contain random information since only a few fields are needed
     :param file_name: output image name
     :param image: image pixels
+    :param statistics: print image statistics
     """
     # Create the image
-    hdu = fits.PrimaryHDU()
-    hdu.data = np.int16(image)
+    hdu = fits.PrimaryHDU(data=image)
+    if statistics:
+        print_statistics('fits', hdu.data)
 
     # Create a standard image header
     # hdu.header['SIMPLE'] = True
@@ -283,6 +316,12 @@ if __name__ == '__main__':
                         default=False,
                         help='plot image')
 
+    parser.add_argument('-s', '--stat',
+                        action='store_true',
+                        dest='statistics',
+                        default=False,
+                        help='print image statistics')
+
     parser.add_argument('-e', '--enable',
                         nargs='+',
                         action='store',
@@ -291,7 +330,8 @@ if __name__ == '__main__':
                         help='enable individual lgs (1,2,3,4 [default=all]')
 
     # args = parser.parse_args(['test.fits', '-p', '-e', '1', '4'])
-    args = parser.parse_args()
+    args = parser.parse_args(['test.fits', '-p', '-s'])
+    # args = parser.parse_args()
 
     # Convert enable flags to multiplicative factors
 
@@ -303,8 +343,8 @@ if __name__ == '__main__':
         lgs_enable = [1 for _ in range(4)]
 
     # Generate and save image
-    art_image = generate_artificial_image(lgs_enable)
-    write_fits_image('test.fits', art_image)
+    art_image = generate_artificial_image(lgs_enable, args.statistics)
+    write_fits_image('test.fits', art_image, statistics=args.statistics)
 
     # Plot image
     if args.plot:
