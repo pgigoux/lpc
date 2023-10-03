@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Code based on the Astropy documentation
 1.2. Construction of an artificial (but realistic) image
@@ -330,8 +331,8 @@ if __name__ == '__main__':
                         help='enable individual lgs (1,2,3,4 [default=all]')
 
     # args = parser.parse_args(['test.fits', '-p', '-e', '1', '4'])
-    args = parser.parse_args(['test.fits', '-p', '-s'])
-    # args = parser.parse_args()
+    # args = parser.parse_args(['test.fits', '-p', '-s'])
+    args = parser.parse_args()
 
     # Convert enable flags to multiplicative factors
 
@@ -344,7 +345,7 @@ if __name__ == '__main__':
 
     # Generate and save image
     art_image = generate_artificial_image(lgs_enable, args.statistics)
-    write_fits_image('test.fits', art_image, statistics=args.statistics)
+    write_fits_image(args.filename, art_image, statistics=args.statistics)
 
     # Plot image
     if args.plot:
