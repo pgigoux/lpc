@@ -4,6 +4,11 @@ from photutils.centroids import centroid_sources, centroid_2dg
 from astropy.io import fits
 
 
+# def print_list(in_list: list):
+#     for e in in_list:
+#         print(e)
+
+
 def read_fits_image(file_name: str) -> np.ndarray:
     """
     Read the pixels from a FITS image
@@ -11,41 +16,73 @@ def read_fits_image(file_name: str) -> np.ndarray:
     :return: ndarray with the pixel data
     """
     hdu_list = fits.open(file_name)
-    hdu_list.info()
+    # hdu_list.info()
     return hdu_list[0].data
 
 
-def sample_code(image_data: np.ndarray):
+def get_reference_positions(image_data: np.ndarray) -> tuple:
     """
-    This is a piece of sample code largely based on the photutils.centroids documentation
-    https://photutils.readthedocs.io/en/stable/centroids.html
-    Used for initial testing
-    :param image_data: image pixel data
+    Get the LGS reference positions
+    For the time being we are assuming they are located at the center of each quadrant.
+    In the final implementation they will most likely be read from a configuration file.
+    :return: tuple of tuples with the x and y coordinates
     """
-
-    # Calculate initial positions
     y_max, x_max = image_data.shape
     x1, y1 = x_max * 0.25, y_max * 0.25
     x2, y2 = x_max * 0.75, y1
     x3, y3 = x1, y_max * 0.75
     x4, y4 = x2, y3
+    return (x1, x2, x3, x4), (y1, y2, y3, y4)
 
-    x_init = (x1, x2, x3, x4)
-    y_init = (y1, y2, y3, y4)
 
-    # Calculate the centroids
-    x, y = centroid_sources(image_data, x_init, y_init, box_size=201,
-                            centroid_func=centroid_2dg)
+def find_centroids(image_data: np.ndarray, reference_coordinates: tuple, box_size=101) -> list:
+    """
+    Find centroids in pixel space
+    :param image_data: image data
+    :param reference_coordinates: tuple containing the x and y starting positions
+    :param box_size: size of the sub-image used to find the centroid (must be an even number)
+    :return: list of tuples containing (x, y, pixel value) for each centroid
+    """
+    # Extract the initial positions
+    x_init, y_init = reference_coordinates
 
-    # Plot the results
+    # Make sure the box is an odd number (required by centroid_sources)
+    box_size = box_size if box_size % 2 == 1 else box_size + 1
+
+    # Determine the centroid positions and pack the results
+    xc, yc = centroid_sources(image_data, x_init, y_init, box_size=box_size,
+                              centroid_func=centroid_2dg)
+    centroid_list = [(x, y, image_data.item(int(y), int(x))) for x, y in zip(xc, yc)]
+    # print_list(cent_list)
+
+    return centroid_list
+
+
+def plot_results(image_data: np.ndarray, centroid_list: list, min_value=0):
+    """
+    :param image_data: image data
+    :param centroid_list: centroid position and pixel values
+    :param min_value: minimum centroid intensity to consider it valid
+    """
+    # Extract centroid coordinates that are above the minimum threshold
+    xc, yc = [], []
+    for c in centroid_list:
+        x, y, v = c
+        if v > min_value:
+            xc.append(x)
+            yc.append(y)
+
+    # Plot a mark over the valid centroids
     plt.figure(figsize=(8, 4))
     plt.imshow(image_data, origin='lower', interpolation='nearest', cmap='gray')
-    plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
+    plt.scatter(xc, yc, marker='+', s=80, color='red', label='Centroids')
     plt.legend()
     plt.tight_layout()
     plt.show()
 
 
 if __name__ == '__main__':
-    image = read_fits_image('test1.fits')
-    sample_code(image)
+    image = read_fits_image('test2.fits')
+    ref_pos = get_reference_positions(image)
+    centroids = find_centroids(image, ref_pos, box_size=200)
+    plot_results(image, centroids, min_value=1500)
