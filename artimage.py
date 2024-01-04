@@ -28,7 +28,7 @@ DEFAULT_NGS_STDDEV = 4
 DEFAULT_LGS_ENABLE = [True, True, True, True]
 DEFAULT_LGS_AMPLITUDE = 12000  # counts
 DEFAULT_LGS_STDDEV = 10
-DEFAULT_NOISE_PERCENT = 4
+DEFAULT_NOISE_PERCENT = 10
 DEFAULT_LGS_LIST = [1, 2, 3, 4]
 
 # Other parameters used to generate the artificial image
